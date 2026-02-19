@@ -39,6 +39,9 @@ export function createApp(runtime = new PlatformRuntime()): FastifyInstance {
     root: resolve("apps/web"),
     prefix: "/"
   });
+  app.addHook("onClose", async () => {
+    runtime.close();
+  });
 
   app.setErrorHandler((error, _request, reply) => {
     if ((error as { statusCode?: number }).statusCode === 401) {
@@ -93,6 +96,14 @@ export function createApp(runtime = new PlatformRuntime()): FastifyInstance {
   app.get("/api/metadata/sql-preview", async (request) => {
     await requireRequestContext(request);
     return { statements: runtime.getMetadataSqlPreview() };
+  });
+
+  app.get("/api/metadata/db-tables", async (request) => {
+    const context = await requireRequestContext(request);
+    if (context.role !== "Admin") {
+      throw new Error("Only Admin can read database table list.");
+    }
+    return { tables: runtime.getDatabaseTables() };
   });
 
   app.get("/api/metadata/migrations", async (request) => {

@@ -67,6 +67,18 @@ describe("HTTP API", () => {
     expect(Array.isArray(migrationsPayload)).toBe(true);
     expect(migrationsPayload.length).toBeGreaterThan(0);
     expect(migrationsPayload[0].metadataName).toBe("TradeManagement");
+
+    const tablesResponse = await app.inject({
+      method: "GET",
+      url: "/api/metadata/db-tables",
+      headers: {
+        authorization: `Bearer ${adminToken}`
+      }
+    });
+    expect(tablesResponse.statusCode).toBe(200);
+    const tablesPayload = tablesResponse.json();
+    expect(tablesPayload.tables).toContain("catalog_items");
+    expect(tablesPayload.tables).toContain("document_salesinvoice");
   });
 
   it("blocks non-admin migration history access", async () => {

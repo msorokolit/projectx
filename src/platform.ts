@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { compileMetadataToSql, createMigrationRecord } from "./metadataCompiler";
+import { MetadataMigrator } from "./metadataMigrator";
 import { ScriptEngine } from "./scriptingEngine";
 import {
   type AppMetadata,
@@ -57,6 +58,7 @@ export class PlatformRuntime {
   private readonly metadataMigrations: MetadataMigrationRecord[] = [];
   private metadataSqlPreview: string[] = [];
   private readonly scriptEngine = new ScriptEngine();
+  private readonly metadataMigrator = new MetadataMigrator();
 
   setMetadata(metadata: AppMetadata, actor = "system"): void {
     const statements = compileMetadataToSql(metadata);
@@ -65,6 +67,7 @@ export class PlatformRuntime {
     this.metadata = metadata;
     this.metadataSqlPreview = statements;
     this.metadataMigrations.push(migrationRecord);
+    this.metadataMigrator.applyMigration(migrationRecord);
     this.catalogs.clear();
     this.documents.clear();
     this.registerMovements.clear();
@@ -96,6 +99,10 @@ export class PlatformRuntime {
 
   getMetadataMigrationHistory(): MetadataMigrationRecord[] {
     return clone(this.metadataMigrations);
+  }
+
+  getDatabaseTables(): string[] {
+    return this.metadataMigrator.listTables();
   }
 
   registerScript(scriptName: string, sourceCode: string): void {
@@ -497,5 +504,9 @@ export class PlatformRuntime {
       objectId,
       details
     });
+  }
+
+  close(): void {
+    this.metadataMigrator.close();
   }
 }

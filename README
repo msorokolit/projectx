@@ -62,6 +62,7 @@ Open `http://localhost:3000/` for the built-in web client.
 - `POST /api/auth/login`
 - `GET /api/metadata`
 - `GET /api/metadata/sql-preview`
+- `GET /api/metadata/db-tables`
 - `GET /api/metadata/migrations`
 - `POST /api/metadata/load`
 - `GET /api/catalog/:catalog`
