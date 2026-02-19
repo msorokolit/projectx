@@ -183,13 +183,24 @@ describe("1C clone platform runtime", () => {
 });
 
 describe("script engine sandbox behavior", () => {
-  it("does not expose process object", () => {
+  it("rejects forbidden node globals in source", () => {
     const engine = new ScriptEngine();
-    const result = engine.run({
-      sourceCode: "() => typeof process",
-      context: {}
-    });
-    expect(result).toBe("undefined");
+    expect(() =>
+      engine.run({
+        sourceCode: "() => typeof process",
+        context: {}
+      })
+    ).toThrow(/forbidden token/);
+  });
+
+  it("rejects require usage in source", () => {
+    const engine = new ScriptEngine();
+    expect(() =>
+      engine.run({
+        sourceCode: "() => require('node:fs')",
+        context: {}
+      })
+    ).toThrow(/forbidden token/);
   });
 
   it("stops infinite loops with timeout", () => {
