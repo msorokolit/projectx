@@ -3,15 +3,19 @@ import jwt from "@fastify/jwt";
 import staticFiles from "@fastify/static";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { loginPayloadSchema, validateCredentials } from "./auth";
+import { registerAuditRoutes } from "../apps/server/src/modules/audit/audit.routes";
+import { registerAuthRoutes } from "../apps/server/src/modules/auth/auth.routes";
+import { registerCatalogRoutes } from "../apps/server/src/modules/catalogs/catalogs.routes";
+import { registerDocumentRoutes } from "../apps/server/src/modules/documents/documents.routes";
+import { registerMetadataRoutes } from "../apps/server/src/modules/metadata/metadata.routes";
+import {
+  type ModuleDeps,
+  type RequestContext
+} from "../apps/server/src/modules/module-types";
+import { registerRegisterRoutes } from "../apps/server/src/modules/registers/registers.routes";
+import { registerScriptingRoutes } from "../apps/server/src/modules/scripting/scripting.routes";
 import { readConfig } from "./config";
-import { parseMetadata } from "./metadata";
 import { PlatformRuntime } from "./platform";
-
-interface RequestContext {
-  actor: string;
-  role: string;
-}
 
 interface JwtPayload {
   username: string;
@@ -97,201 +101,18 @@ export function createApp(runtime = new PlatformRuntime()): FastifyInstance {
     return reply.sendFile("index.html");
   });
 
-  app.post<{ Body: unknown }>("/api/auth/login", async (request) => {
-    const body = loginPayloadSchema.parse(request.body);
-    const user = validateCredentials(body.username, body.password);
-    if (!user) {
-      throw new Error("Invalid credentials.");
-    }
-    const token = app.jwt.sign({
-      username: user.username,
-      role: user.role
-    });
-    return {
-      accessToken: token,
-      user
-    };
-  });
+  const moduleDeps: ModuleDeps = {
+    runtime,
+    requireRequestContext
+  };
 
-  app.post<{ Body: unknown }>("/api/metadata/load", async (request) => {
-    const context = await requireRequestContext(request);
-    const metadata = parseMetadata(request.body);
-    runtime.setMetadata(metadata, context.actor);
-    return { ok: true, name: metadata.name, version: metadata.version };
-  });
-
-  app.get("/api/metadata", async (request) => {
-    await requireRequestContext(request);
-    return runtime.getMetadata();
-  });
-
-  app.get("/api/metadata/sql-preview", async (request) => {
-    await requireRequestContext(request);
-    return { statements: runtime.getMetadataSqlPreview() };
-  });
-
-  app.get("/api/metadata/db-tables", async (request) => {
-    const context = await requireRequestContext(request);
-    if (context.role !== "Admin") {
-      throw new Error("Only Admin can read database table list.");
-    }
-    return { tables: runtime.getDatabaseTables() };
-  });
-
-  app.get("/api/metadata/migrations", async (request) => {
-    const context = await requireRequestContext(request);
-    if (context.role !== "Admin") {
-      throw new Error("Only Admin can read metadata migration history.");
-    }
-    return runtime.getMetadataMigrationHistory();
-  });
-
-  app.get<{ Params: { catalog: string } }>("/api/catalog/:catalog", async (request) => {
-    const context = await requireRequestContext(request);
-    runtime.assertPermission(context.role, "catalog", request.params.catalog, "read");
-    return runtime.listCatalogRecords(request.params.catalog);
-  });
-
-  app.get<{ Params: { catalog: string; id: string } }>(
-    "/api/catalog/:catalog/:id",
-    async (request) => {
-      const context = await requireRequestContext(request);
-      runtime.assertPermission(context.role, "catalog", request.params.catalog, "read");
-      return runtime.getCatalogRecord(request.params.catalog, request.params.id);
-    }
-  );
-
-  app.post<{ Params: { catalog: string }; Body: Record<string, unknown> }>(
-    "/api/catalog/:catalog",
-    async (request) => {
-      const context = await requireRequestContext(request);
-      return runtime.upsertCatalogRecord(
-        context.actor,
-        context.role,
-        request.params.catalog,
-        request.body
-      );
-    }
-  );
-
-  app.put<{ Params: { catalog: string; id: string }; Body: Record<string, unknown> }>(
-    "/api/catalog/:catalog/:id",
-    async (request) => {
-      const context = await requireRequestContext(request);
-      return runtime.upsertCatalogRecord(
-        context.actor,
-        context.role,
-        request.params.catalog,
-        request.body,
-        request.params.id
-      );
-    }
-  );
-
-  app.get<{ Params: { document: string } }>("/api/document/:document", async (request) => {
-    const context = await requireRequestContext(request);
-    runtime.assertPermission(context.role, "document", request.params.document, "read");
-    return runtime.listDocuments(request.params.document);
-  });
-
-  app.get<{ Params: { document: string; id: string } }>(
-    "/api/document/:document/:id",
-    async (request) => {
-      const context = await requireRequestContext(request);
-      runtime.assertPermission(context.role, "document", request.params.document, "read");
-      return runtime.getDocument(request.params.document, request.params.id);
-    }
-  );
-
-  app.post<{ Params: { document: string }; Body: Record<string, unknown> }>(
-    "/api/document/:document",
-    async (request) => {
-      const context = await requireRequestContext(request);
-      return runtime.upsertDocument(
-        context.actor,
-        context.role,
-        request.params.document,
-        request.body
-      );
-    }
-  );
-
-  app.put<{ Params: { document: string; id: string }; Body: Record<string, unknown> }>(
-    "/api/document/:document/:id",
-    async (request) => {
-      const context = await requireRequestContext(request);
-      return runtime.upsertDocument(
-        context.actor,
-        context.role,
-        request.params.document,
-        request.body,
-        request.params.id
-      );
-    }
-  );
-
-  app.post<{ Params: { document: string; id: string } }>(
-    "/api/document/:document/:id/post",
-    async (request) => {
-      const context = await requireRequestContext(request);
-      return runtime.postDocument(
-        context.actor,
-        context.role,
-        request.params.document,
-        request.params.id
-      );
-    }
-  );
-
-  app.post<{ Params: { document: string; id: string } }>(
-    "/api/document/:document/:id/unpost",
-    async (request) => {
-      const context = await requireRequestContext(request);
-      return runtime.unpostDocument(
-        context.actor,
-        context.role,
-        request.params.document,
-        request.params.id
-      );
-    }
-  );
-
-  app.get<{ Params: { register: string } }>(
-    "/api/register/:register/movements",
-    async (request) => {
-      const context = await requireRequestContext(request);
-      runtime.assertPermission(context.role, "register", request.params.register, "read");
-      return runtime.getRegisterMovements(request.params.register);
-    }
-  );
-
-  app.get<{ Params: { register: string }; Querystring: Record<string, unknown> }>(
-    "/api/register/:register/balance",
-    async (request) => {
-      const context = await requireRequestContext(request);
-      runtime.assertPermission(context.role, "register", request.params.register, "read");
-      return runtime.getRegisterBalance(
-        request.params.register,
-        request.query as Record<string, unknown>
-      );
-    }
-  );
-
-  app.get("/api/audit", async (request) => {
-    const context = await requireRequestContext(request);
-    if (context.role !== "Admin") {
-      throw new Error("Only Admin can read audit log.");
-    }
-    return runtime.getAuditLog();
-  });
-
-  app.get("/api/scripting/metrics", async (request) => {
-    const context = await requireRequestContext(request);
-    if (context.role !== "Admin") {
-      throw new Error("Only Admin can read script metrics.");
-    }
-    return runtime.getScriptMetrics();
-  });
+  registerAuthRoutes(app);
+  registerMetadataRoutes(app, moduleDeps);
+  registerCatalogRoutes(app, moduleDeps);
+  registerDocumentRoutes(app, moduleDeps);
+  registerRegisterRoutes(app, moduleDeps);
+  registerAuditRoutes(app, moduleDeps);
+  registerScriptingRoutes(app, moduleDeps);
 
   return app;
 }
