@@ -1,4 +1,4 @@
-import { startServer } from "./serverEntry";
+import { startServer } from "../../../src/serverEntry";
 
 startServer().catch((error) => {
   // eslint-disable-next-line no-console

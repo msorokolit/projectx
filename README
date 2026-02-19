@@ -31,6 +31,13 @@ This project is a metadata-driven ERP platform inspired by 1C architecture, with
 ## Project structure
 
 ```text
+apps/
+  server/src/main.ts
+  web/
+packages/
+  core/src/index.ts
+  db/src/index.ts
+  sdk/src/client.ts
 examples/trade-management/
   metadata/trade-management.json
   scripts/
