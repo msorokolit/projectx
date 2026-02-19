@@ -234,32 +234,42 @@ export class PlatformRuntime {
       throw new Error(`Document already posted: ${documentName}/${id}`);
     }
 
+    const recordSnapshot = clone(record);
+    const registerSnapshot = this.snapshotRegisterMovements();
     const pendingMovements: RegisterMovement[] = [];
+    try {
+      this.runHook(
+        definition.hooks.beforePost,
+        { actor, objectName: documentName },
+        this.buildDocumentHookApi(record, pendingMovements)
+      );
 
-    this.runHook(
-      definition.hooks.beforePost,
-      { actor, objectName: documentName },
-      this.buildDocumentHookApi(record, pendingMovements)
-    );
+      for (const movement of pendingMovements) {
+        this.pushMovement(record, documentName, movement);
+      }
 
-    for (const movement of pendingMovements) {
-      this.pushMovement(record, documentName, movement);
+      record.posted = true;
+      record.updatedAt = nowIso();
+      store.set(id, record);
+
+      this.runHook(
+        definition.hooks.onPost,
+        { actor, objectName: documentName },
+        this.buildDocumentHookApi(record, pendingMovements)
+      );
+
+      this.audit(actor, "document.post", "document", documentName, id, {
+        movementCount: pendingMovements.length
+      });
+      return clone(record);
+    } catch (error) {
+      store.set(id, recordSnapshot);
+      this.restoreRegisterMovements(registerSnapshot);
+      this.audit(actor, "document.post.failed", "document", documentName, id, {
+        error: error instanceof Error ? error.message : "Unknown posting error"
+      });
+      throw error;
     }
-
-    record.posted = true;
-    record.updatedAt = nowIso();
-    store.set(id, record);
-
-    this.runHook(
-      definition.hooks.onPost,
-      { actor, objectName: documentName },
-      this.buildDocumentHookApi(record, pendingMovements)
-    );
-
-    this.audit(actor, "document.post", "document", documentName, id, {
-      movementCount: pendingMovements.length
-    });
-    return clone(record);
   }
 
   unpostDocument(actor: string, role: string, documentName: string, id: string): DocumentRecord {
@@ -273,26 +283,36 @@ export class PlatformRuntime {
     if (!record.posted) {
       throw new Error(`Document is not posted: ${documentName}/${id}`);
     }
+    const recordSnapshot = clone(record);
+    const registerSnapshot = this.snapshotRegisterMovements();
+    try {
+      for (const [registerName, movements] of this.registerMovements.entries()) {
+        const filtered = movements.filter(
+          (movement) =>
+            !(movement.documentType === documentName && movement.documentId === id)
+        );
+        this.registerMovements.set(registerName, filtered);
+      }
 
-    for (const [registerName, movements] of this.registerMovements.entries()) {
-      const filtered = movements.filter(
-        (movement) =>
-          !(movement.documentType === documentName && movement.documentId === id)
+      this.runHook(
+        definition.hooks.onUnpost,
+        { actor, objectName: documentName },
+        this.buildDocumentHookApi(record, [])
       );
-      this.registerMovements.set(registerName, filtered);
+
+      record.posted = false;
+      record.updatedAt = nowIso();
+      store.set(id, record);
+      this.audit(actor, "document.unpost", "document", documentName, id);
+      return clone(record);
+    } catch (error) {
+      store.set(id, recordSnapshot);
+      this.restoreRegisterMovements(registerSnapshot);
+      this.audit(actor, "document.unpost.failed", "document", documentName, id, {
+        error: error instanceof Error ? error.message : "Unknown unpost error"
+      });
+      throw error;
     }
-
-    this.runHook(
-      definition.hooks.onUnpost,
-      { actor, objectName: documentName },
-      this.buildDocumentHookApi(record, [])
-    );
-
-    record.posted = false;
-    record.updatedAt = nowIso();
-    store.set(id, record);
-    this.audit(actor, "document.unpost", "document", documentName, id);
-    return clone(record);
   }
 
   getRegisterMovements(registerName: string): RegisterMovementRecord[] {
@@ -367,6 +387,21 @@ export class PlatformRuntime {
   private ensureRegisterExists(name: string): void {
     if (!this.registerMovements.has(name)) {
       throw new Error(`Register store missing: ${name}`);
+    }
+  }
+
+  private snapshotRegisterMovements(): Map<string, RegisterMovementRecord[]> {
+    const snapshot = new Map<string, RegisterMovementRecord[]>();
+    for (const [registerName, movements] of this.registerMovements.entries()) {
+      snapshot.set(registerName, clone(movements));
+    }
+    return snapshot;
+  }
+
+  private restoreRegisterMovements(snapshot: Map<string, RegisterMovementRecord[]>): void {
+    this.registerMovements.clear();
+    for (const [registerName, movements] of snapshot.entries()) {
+      this.registerMovements.set(registerName, clone(movements));
     }
   }
 

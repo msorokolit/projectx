@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bootstrapTradeManagement } from "../src/bootstrap";
+import { loadMetadataFromFile } from "../src/metadata";
 import { PlatformRuntime } from "../src/platform";
 import { ScriptEngine } from "../src/scriptingEngine";
 
@@ -86,6 +87,98 @@ describe("1C clone platform runtime", () => {
         sku: "NOPE"
       })
     ).toThrow(/Access denied/);
+  });
+
+  it("rolls back posting when onPost hook fails", () => {
+    const runtime = new PlatformRuntime();
+    const metadata = loadMetadataFromFile("examples/trade-management/metadata/trade-management.json");
+    const receipt = metadata.documents.find((document) => document.name === "WarehouseReceipt");
+    if (!receipt) {
+      throw new Error("WarehouseReceipt metadata is missing");
+    }
+    receipt.hooks.onPost = "warehouseReceipt.onPost.fail";
+    runtime.setMetadata(metadata, "test");
+    runtime.registerScriptFromFile(
+      "warehouseReceipt.beforePost",
+      "examples/trade-management/scripts/warehouseReceipt.beforePost.js"
+    );
+    runtime.registerScript("warehouseReceipt.onPost.fail", "({ reject }) => reject('forced onPost failure')");
+
+    const item = runtime.upsertCatalogRecord("manager", "Manager", "Items", {
+      name: "Rollback item",
+      sku: "ROLL-POST"
+    });
+    const warehouse = runtime.upsertCatalogRecord("manager", "Manager", "Warehouses", {
+      name: "Rollback warehouse"
+    });
+    const receiptDoc = runtime.upsertDocument("manager", "Manager", "WarehouseReceipt", {
+      warehouseId: warehouse.id,
+      lines: [{ itemId: item.id, quantity: 3, price: 10 }]
+    });
+
+    expect(() =>
+      runtime.postDocument("manager", "Manager", "WarehouseReceipt", receiptDoc.id)
+    ).toThrow(/forced onPost failure/);
+
+    const reloaded = runtime.getDocument("WarehouseReceipt", receiptDoc.id);
+    expect(reloaded.posted).toBe(false);
+    const balance = runtime.getRegisterBalance("StockBalance", {
+      itemId: item.id,
+      warehouseId: warehouse.id
+    });
+    expect(balance.quantity).toBe(0);
+  });
+
+  it("rolls back unpost when onUnpost hook fails", () => {
+    const runtime = new PlatformRuntime();
+    const metadata = loadMetadataFromFile("examples/trade-management/metadata/trade-management.json");
+    const salesInvoice = metadata.documents.find((document) => document.name === "SalesInvoice");
+    if (!salesInvoice) {
+      throw new Error("SalesInvoice metadata is missing");
+    }
+    salesInvoice.hooks.onUnpost = "salesInvoice.onUnpost.fail";
+    runtime.setMetadata(metadata, "test");
+    runtime.registerScriptFromFile(
+      "warehouseReceipt.beforePost",
+      "examples/trade-management/scripts/warehouseReceipt.beforePost.js"
+    );
+    runtime.registerScriptFromFile(
+      "salesInvoice.beforePost",
+      "examples/trade-management/scripts/salesInvoice.beforePost.js"
+    );
+    runtime.registerScript("salesInvoice.onUnpost.fail", "({ reject }) => reject('forced onUnpost failure')");
+
+    const item = runtime.upsertCatalogRecord("manager", "Manager", "Items", {
+      name: "Rollback unpost item",
+      sku: "ROLL-UNPOST"
+    });
+    const warehouse = runtime.upsertCatalogRecord("manager", "Manager", "Warehouses", {
+      name: "Rollback unpost warehouse"
+    });
+
+    const receiptDoc = runtime.upsertDocument("manager", "Manager", "WarehouseReceipt", {
+      warehouseId: warehouse.id,
+      lines: [{ itemId: item.id, quantity: 10, price: 10 }]
+    });
+    runtime.postDocument("manager", "Manager", "WarehouseReceipt", receiptDoc.id);
+
+    const invoice = runtime.upsertDocument("manager", "Manager", "SalesInvoice", {
+      warehouseId: warehouse.id,
+      lines: [{ itemId: item.id, quantity: 4, price: 20, taxRate: 0.2 }]
+    });
+    runtime.postDocument("manager", "Manager", "SalesInvoice", invoice.id);
+
+    expect(() =>
+      runtime.unpostDocument("manager", "Manager", "SalesInvoice", invoice.id)
+    ).toThrow(/forced onUnpost failure/);
+
+    const reloaded = runtime.getDocument("SalesInvoice", invoice.id);
+    expect(reloaded.posted).toBe(true);
+    const balance = runtime.getRegisterBalance("StockBalance", {
+      itemId: item.id,
+      warehouseId: warehouse.id
+    });
+    expect(balance.quantity).toBe(6);
   });
 });
 
