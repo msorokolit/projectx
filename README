@@ -1,1 +1,88 @@
+# 1C Enterprise Clone (JavaScript Business Logic)
 
+This project is a metadata-driven ERP platform inspired by 1C architecture, with **JavaScript hooks** used as the business scripting language.
+
+## Implemented MVP capabilities
+
+- Metadata model:
+  - Catalogs
+  - Documents
+  - Accumulation registers
+  - Roles and permissions (RBAC)
+- Generic runtime:
+  - CRUD for catalogs and documents
+  - Document post/unpost lifecycle
+  - Register movement storage and balance calculation
+- JavaScript business logic hooks:
+  - `beforeWrite`
+  - `onWrite`
+  - `beforePost`
+  - `onPost`
+  - `onUnpost`
+- Hook sandboxing:
+  - Script execution with VM timeout guard
+  - No direct `process` object in script global scope
+- API endpoints for metadata, objects, posting, balances, and audit log
+- Example domain: `TradeManagement` (items, warehouses, receipts, sales invoices)
+
+## Project structure
+
+```text
+examples/trade-management/
+  metadata/trade-management.json
+  scripts/
+src/
+  app.ts
+  bootstrap.ts
+  metadata.ts
+  platform.ts
+  scriptingEngine.ts
+  server.ts
+tests/
+  app.test.ts
+  platform.test.ts
+```
+
+## Quick start
+
+```bash
+npm install
+npm run test
+npm run dev
+```
+
+Server starts on `http://localhost:3000`.
+
+## Important API endpoints
+
+- `GET /health`
+- `GET /api/metadata`
+- `POST /api/metadata/load`
+- `GET /api/catalog/:catalog`
+- `POST /api/catalog/:catalog`
+- `PUT /api/catalog/:catalog/:id`
+- `GET /api/document/:document`
+- `POST /api/document/:document`
+- `POST /api/document/:document/:id/post`
+- `POST /api/document/:document/:id/unpost`
+- `GET /api/register/:register/movements`
+- `GET /api/register/:register/balance?dim=value`
+- `GET /api/audit` (Admin only)
+
+## Example flow
+
+1. Create catalog entries in `Items` and `Warehouses`.
+2. Create `WarehouseReceipt` and post it.
+3. Create `SalesInvoice` and post it.
+4. `beforePost` scripts:
+   - Write register movements
+   - Validate available stock
+   - Compute totals/taxes
+5. Query `StockBalance` register for resulting balances.
+
+## Request context headers
+
+- `x-user` — actor name used in audit log.
+- `x-role` — role for permission checks (`Admin`, `Manager`, `Viewer`).
+
+If omitted, role defaults to `Admin` for easy local bootstrapping.
