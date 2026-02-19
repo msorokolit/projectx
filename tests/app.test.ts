@@ -346,4 +346,33 @@ describe("HTTP API", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json().message).toMatch(/Only Admin/);
   });
+
+  it("runs demo seed scenario for admin", async () => {
+    const adminToken = await login("admin", "admin");
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/demo/seed/trade-management",
+      headers: {
+        authorization: `Bearer ${adminToken}`
+      }
+    });
+    expect(response.statusCode).toBe(200);
+    const payload = response.json();
+    expect(payload.balanceAfterReceipt.quantity).toBe(10);
+    expect(payload.balanceAfterInvoice.quantity).toBe(6);
+    expect(payload.balanceAfterUnpost.quantity).toBe(10);
+  });
+
+  it("blocks manager from demo seed scenario", async () => {
+    const managerToken = await login("manager", "manager");
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/demo/seed/trade-management",
+      headers: {
+        authorization: `Bearer ${managerToken}`
+      }
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().message).toMatch(/Only Admin/);
+  });
 });

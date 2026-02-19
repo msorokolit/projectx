@@ -7,6 +7,7 @@ import { registerAuditRoutes } from "../apps/server/src/modules/audit/audit.rout
 import { registerAuthRoutes } from "../apps/server/src/modules/auth/auth.routes";
 import { registerCatalogRoutes } from "../apps/server/src/modules/catalogs/catalogs.routes";
 import { registerDocumentRoutes } from "../apps/server/src/modules/documents/documents.routes";
+import { registerDemoRoutes } from "../apps/server/src/modules/demo/demo.routes";
 import { registerMetadataRoutes } from "../apps/server/src/modules/metadata/metadata.routes";
 import {
   type ModuleDeps,
@@ -113,6 +114,7 @@ export function createApp(runtime = new PlatformRuntime()): FastifyInstance {
   registerCatalogRoutes(app, moduleDeps);
   registerDocumentRoutes(app, moduleDeps);
   registerRegisterRoutes(app, moduleDeps);
+  registerDemoRoutes(app, moduleDeps);
   registerAuditRoutes(app, moduleDeps);
   registerScriptingRoutes(app, moduleDeps);
 

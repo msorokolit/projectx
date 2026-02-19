@@ -93,6 +93,7 @@ The web client includes metadata browser, generic object CRUD, document lifecycl
 - `GET /api/scripting/registry` (Admin only)
 - `POST /api/scripting/registry` (Admin only)
 - `POST /api/scripting/validate` (Admin only)
+- `POST /api/demo/seed/trade-management` (Admin only)
 
 ## Example flow
 
@@ -104,6 +105,13 @@ The web client includes metadata browser, generic object CRUD, document lifecycl
    - Validate available stock
    - Compute totals/taxes
 5. Query `StockBalance` register for resulting balances.
+
+Or run one-click demo seed:
+
+```bash
+curl -X POST http://localhost:3000/api/demo/seed/trade-management \
+  -H "authorization: Bearer <admin-token>"
+```
 
 ## Authentication
 

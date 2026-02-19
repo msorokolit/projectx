@@ -18,6 +18,7 @@ The platform follows a simplified 1C-style model:
 - `src/scriptingEngine.ts`: VM-based JavaScript hook execution.
 - `src/app.ts`: Fastify composition root (plugins + module route wiring).
 - `apps/server/src/modules/*`: route/service modules (auth, metadata, catalogs, documents, registers, scripting, audit).
+- `apps/server/src/modules/demo/*`: seeded trade scenario endpoint for rapid demo verification.
 - `apps/server/src/plugins/security.ts`: baseline security headers.
 - `src/bootstrap.ts`: loads example metadata/scripts.
 - `packages/core/*`, `packages/db/*`, `packages/sdk/*`: reusable package entry points.
