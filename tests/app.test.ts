@@ -157,4 +157,13 @@ describe("HTTP API", () => {
     });
     expect(response.statusCode).toBe(401);
   });
+
+  it("serves web client homepage", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/"
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toContain("1C Enterprise Clone");
+  });
 });

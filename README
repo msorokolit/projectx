@@ -54,6 +54,7 @@ npm run dev
 ```
 
 Server starts on `http://localhost:3000`.
+Open `http://localhost:3000/` for the built-in web client.
 
 ## Important API endpoints
 

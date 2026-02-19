@@ -1,5 +1,7 @@
 import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify";
 import jwt from "@fastify/jwt";
+import staticFiles from "@fastify/static";
+import { resolve } from "node:path";
 import { loginPayloadSchema, validateCredentials } from "./auth";
 import { parseMetadata } from "./metadata";
 import { PlatformRuntime } from "./platform";
@@ -33,6 +35,10 @@ export function createApp(runtime = new PlatformRuntime()): FastifyInstance {
   app.register(jwt, {
     secret: process.env.JWT_SECRET ?? "dev-local-secret"
   });
+  app.register(staticFiles, {
+    root: resolve("apps/web"),
+    prefix: "/"
+  });
 
   app.setErrorHandler((error, _request, reply) => {
     if ((error as { statusCode?: number }).statusCode === 401) {
@@ -50,6 +56,10 @@ export function createApp(runtime = new PlatformRuntime()): FastifyInstance {
 
   app.get("/health", async () => {
     return { ok: true, service: "1c-enterprise-clone" };
+  });
+
+  app.get("/", async (_request, reply) => {
+    return reply.sendFile("index.html");
   });
 
   app.post<{ Body: unknown }>("/api/auth/login", async (request) => {
