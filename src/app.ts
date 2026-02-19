@@ -39,6 +39,18 @@ export function createApp(runtime = new PlatformRuntime()): FastifyInstance {
 
   app.get("/api/metadata", async () => runtime.getMetadata());
 
+  app.get("/api/metadata/sql-preview", async () => {
+    return { statements: runtime.getMetadataSqlPreview() };
+  });
+
+  app.get("/api/metadata/migrations", async (request) => {
+    const context = getRequestContext(request.headers as Record<string, unknown>);
+    if (context.role !== "Admin") {
+      throw new Error("Only Admin can read metadata migration history.");
+    }
+    return runtime.getMetadataMigrationHistory();
+  });
+
   app.get<{ Params: { catalog: string } }>("/api/catalog/:catalog", async (request) => {
     const context = getRequestContext(request.headers as Record<string, unknown>);
     runtime.assertPermission(context.role, "catalog", request.params.catalog, "read");

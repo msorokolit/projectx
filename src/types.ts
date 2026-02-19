@@ -108,3 +108,12 @@ export interface RegisterMovementRecord {
   documentId: string;
   timestamp: string;
 }
+
+export interface MetadataMigrationRecord {
+  id: string;
+  timestamp: string;
+  actor: string;
+  metadataName: string;
+  metadataVersion: string;
+  statements: string[];
+}

@@ -26,6 +26,31 @@ describe("HTTP API", () => {
     expect(payload.name).toBe("TradeManagement");
   });
 
+  it("returns metadata SQL preview and migration history", async () => {
+    const previewResponse = await app.inject({
+      method: "GET",
+      url: "/api/metadata/sql-preview"
+    });
+    expect(previewResponse.statusCode).toBe(200);
+    const previewPayload = previewResponse.json();
+    expect(Array.isArray(previewPayload.statements)).toBe(true);
+    expect(previewPayload.statements.length).toBeGreaterThan(1);
+
+    const migrationsResponse = await app.inject({
+      method: "GET",
+      url: "/api/metadata/migrations",
+      headers: {
+        "x-role": "Admin",
+        "x-user": "root"
+      }
+    });
+    expect(migrationsResponse.statusCode).toBe(200);
+    const migrationsPayload = migrationsResponse.json();
+    expect(Array.isArray(migrationsPayload)).toBe(true);
+    expect(migrationsPayload.length).toBeGreaterThan(0);
+    expect(migrationsPayload[0].metadataName).toBe("TradeManagement");
+  });
+
   it("allows manager to create catalogs and documents", async () => {
     const itemResponse = await app.inject({
       method: "POST",

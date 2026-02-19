@@ -1,12 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { compileMetadataToSql, createMigrationRecord } from "./metadataCompiler";
 import { ScriptEngine } from "./scriptingEngine";
 import {
   type AppMetadata,
   type CatalogDefinition,
   type DocumentDefinition,
   type DocumentRecord,
+  type MetadataMigrationRecord,
   type PlatformAction,
   type PlatformObjectType,
   type PlatformRecord,
@@ -52,10 +54,17 @@ export class PlatformRuntime {
   private readonly registerMovements = new Map<string, RegisterMovementRecord[]>();
   private readonly scriptRegistry = new Map<string, string>();
   private readonly auditLog: AuditEntry[] = [];
+  private readonly metadataMigrations: MetadataMigrationRecord[] = [];
+  private metadataSqlPreview: string[] = [];
   private readonly scriptEngine = new ScriptEngine();
 
   setMetadata(metadata: AppMetadata, actor = "system"): void {
+    const statements = compileMetadataToSql(metadata);
+    const migrationRecord = createMigrationRecord(actor, metadata, statements);
+
     this.metadata = metadata;
+    this.metadataSqlPreview = statements;
+    this.metadataMigrations.push(migrationRecord);
     this.catalogs.clear();
     this.documents.clear();
     this.registerMovements.clear();
@@ -79,6 +88,14 @@ export class PlatformRuntime {
       throw new Error("Metadata is not loaded.");
     }
     return this.metadata;
+  }
+
+  getMetadataSqlPreview(): string[] {
+    return clone(this.metadataSqlPreview);
+  }
+
+  getMetadataMigrationHistory(): MetadataMigrationRecord[] {
+    return clone(this.metadataMigrations);
   }
 
   registerScript(scriptName: string, sourceCode: string): void {
