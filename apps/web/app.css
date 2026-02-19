@@ -48,6 +48,14 @@ input {
   border-radius: 8px;
 }
 
+textarea,
+select {
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  width: 100%;
+}
+
 button {
   border: none;
   padding: 9px 14px;
@@ -65,6 +73,12 @@ button:hover {
 
 .muted {
   color: #64748b;
+}
+
+ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #334155;
 }
 
 #console {

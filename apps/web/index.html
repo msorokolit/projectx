@@ -28,7 +28,99 @@
       </section>
 
       <section class="panel">
-        <h2>Catalogs</h2>
+        <h2>Metadata browser</h2>
+        <button id="refreshMetadataBtn">Refresh metadata</button>
+        <div class="row">
+          <div>
+            <h3>Catalogs</h3>
+            <ul id="metadataCatalogs"></ul>
+          </div>
+          <div>
+            <h3>Documents</h3>
+            <ul id="metadataDocuments"></ul>
+          </div>
+          <div>
+            <h3>Registers</h3>
+            <ul id="metadataRegisters"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Object browser</h2>
+        <div class="row">
+          <label>
+            Kind
+            <select id="browseKind">
+              <option value="catalog">Catalog</option>
+              <option value="document">Document</option>
+              <option value="register">Register</option>
+            </select>
+          </label>
+          <label>
+            Object
+            <select id="browseObject"></select>
+          </label>
+        </div>
+        <button id="listObjectsBtn">List records</button>
+      </section>
+
+      <section class="panel">
+        <h2>Record editor (metadata-driven)</h2>
+        <div class="row">
+          <label>
+            Kind
+            <select id="editKind">
+              <option value="catalog">Catalog</option>
+              <option value="document">Document</option>
+            </select>
+          </label>
+          <label>
+            Object
+            <select id="editObject"></select>
+          </label>
+        </div>
+        <label>
+          Payload JSON
+          <textarea id="payloadJson" rows="8">{}</textarea>
+        </label>
+        <button id="createRecordBtn">Create record</button>
+      </section>
+
+      <section class="panel">
+        <h2>Document lifecycle</h2>
+        <div class="row">
+          <label>
+            Document type
+            <select id="lifecycleDocument"></select>
+          </label>
+          <label>
+            Document id
+            <input id="lifecycleDocumentId" />
+          </label>
+        </div>
+        <button id="postDocumentBtn">Post document</button>
+        <button id="unpostDocumentBtn">Unpost document</button>
+      </section>
+
+      <section class="panel">
+        <h2>Register queries</h2>
+        <div class="row">
+          <label>
+            Register
+            <select id="registerObject"></select>
+          </label>
+        </div>
+        <label>
+          Filter JSON
+          <textarea id="registerFilterJson" rows="5">{}</textarea>
+        </label>
+        <button id="readBalanceBtn">Read balance</button>
+        <button id="readMovementsBtn">Read movements</button>
+      </section>
+
+      <section class="panel">
+        <h2>Quick trade demo helpers</h2>
         <div class="row">
           <label>
             Item name
@@ -104,11 +196,6 @@
         <button id="createInvoiceBtn">Create Invoice</button>
         <button id="postInvoiceBtn">Post Last Invoice</button>
         <button id="unpostInvoiceBtn">Unpost Last Invoice</button>
-      </section>
-
-      <section class="panel">
-        <h2>Register balance</h2>
-        <button id="readBalanceBtn">Read StockBalance</button>
       </section>
 
       <section class="panel">

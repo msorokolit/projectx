@@ -1,7 +1,12 @@
 import { type ModuleDeps, type RequestContext } from "../module-types";
+import { PostingOrchestrator } from "./posting-orchestrator";
 
 export class DocumentsService {
-  constructor(private readonly deps: ModuleDeps) {}
+  private readonly postingOrchestrator: PostingOrchestrator;
+
+  constructor(private readonly deps: ModuleDeps) {
+    this.postingOrchestrator = new PostingOrchestrator(deps);
+  }
 
   list(document: string, context: RequestContext): unknown {
     this.deps.runtime.assertPermission(context.role, "document", document, "read");
@@ -27,10 +32,10 @@ export class DocumentsService {
   }
 
   post(document: string, id: string, context: RequestContext): unknown {
-    return this.deps.runtime.postDocument(context.actor, context.role, document, id);
+    return this.postingOrchestrator.post(document, id, context);
   }
 
   unpost(document: string, id: string, context: RequestContext): unknown {
-    return this.deps.runtime.unpostDocument(context.actor, context.role, document, id);
+    return this.postingOrchestrator.unpost(document, id, context);
   }
 }

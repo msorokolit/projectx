@@ -1,2 +1,2 @@
 export { compileMetadataToSql, createMigrationRecord } from "../../../src/metadataCompiler";
-export { MetadataMigrator } from "../../../src/metadataMigrator";
+export { MetadataMigrator } from "./metadata-migrator";

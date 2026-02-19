@@ -32,7 +32,10 @@ This project is a metadata-driven ERP platform inspired by 1C architecture, with
 
 ```text
 apps/
-  server/src/main.ts
+  server/src/
+    main.ts
+    app.ts
+    modules/*
   web/
 packages/
   core/src/index.ts
@@ -51,6 +54,8 @@ src/
 tests/
   app.test.ts
   platform.test.ts
+  integration/*.integration.test.ts
+  e2e/*.e2e.test.ts
 ```
 
 ## Quick start
@@ -63,6 +68,7 @@ npm run dev
 
 Server starts on `http://localhost:3000`.
 Open `http://localhost:3000/` for the built-in web client.
+The web client includes metadata browser, generic object CRUD, document lifecycle, and register query screens.
 
 ## Important API endpoints
 

@@ -14,6 +14,7 @@ import {
 } from "../apps/server/src/modules/module-types";
 import { registerRegisterRoutes } from "../apps/server/src/modules/registers/registers.routes";
 import { registerScriptingRoutes } from "../apps/server/src/modules/scripting/scripting.routes";
+import { registerSecurityPlugin } from "../apps/server/src/plugins/security";
 import { readConfig } from "./config";
 import { PlatformRuntime } from "./platform";
 
@@ -39,6 +40,7 @@ async function requireRequestContext(
 export function createApp(runtime = new PlatformRuntime()): FastifyInstance {
   const config = readConfig();
   const app = Fastify({ logger: false });
+  registerSecurityPlugin(app);
   app.register(jwt, {
     secret: config.JWT_SECRET
   });

@@ -16,8 +16,11 @@ The platform follows a simplified 1C-style model:
 - `src/metadata.ts`: metadata parser/validator.
 - `src/platform.ts`: in-memory platform kernel.
 - `src/scriptingEngine.ts`: VM-based JavaScript hook execution.
-- `src/app.ts`: Fastify HTTP API.
+- `src/app.ts`: Fastify composition root (plugins + module route wiring).
+- `apps/server/src/modules/*`: route/service modules (auth, metadata, catalogs, documents, registers, scripting, audit).
+- `apps/server/src/plugins/security.ts`: baseline security headers.
 - `src/bootstrap.ts`: loads example metadata/scripts.
+- `packages/core/*`, `packages/db/*`, `packages/sdk/*`: reusable package entry points.
 
 ## Runtime flow for posting
 

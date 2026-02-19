@@ -193,6 +193,16 @@ describe("HTTP API", () => {
     expect(response.body).toContain("1C Enterprise Clone");
   });
 
+  it("adds baseline security headers", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/health"
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["x-frame-options"]).toBe("DENY");
+  });
+
   it("exposes script execution metrics for admin", async () => {
     const managerToken = await login("manager", "manager");
     const adminToken = await login("admin", "admin");
