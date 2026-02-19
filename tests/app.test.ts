@@ -36,6 +36,7 @@ describe("HTTP API", () => {
       }
     });
     expect(response.statusCode).toBe(200);
+    expect(response.headers["x-request-id"]).toBeTruthy();
     const payload = response.json();
     expect(payload.name).toBe("TradeManagement");
   });
@@ -190,5 +191,69 @@ describe("HTTP API", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.body).toContain("1C Enterprise Clone");
+  });
+
+  it("exposes script execution metrics for admin", async () => {
+    const managerToken = await login("manager", "manager");
+    const adminToken = await login("admin", "admin");
+
+    const itemResponse = await app.inject({
+      method: "POST",
+      url: "/api/catalog/Items",
+      headers: {
+        authorization: `Bearer ${managerToken}`
+      },
+      payload: {
+        name: "Keyboard",
+        sku: "KB-001",
+        taxRate: 0.1
+      }
+    });
+    const warehouseResponse = await app.inject({
+      method: "POST",
+      url: "/api/catalog/Warehouses",
+      headers: {
+        authorization: `Bearer ${managerToken}`
+      },
+      payload: {
+        name: "WH-Metrics"
+      }
+    });
+
+    const item = itemResponse.json();
+    const warehouse = warehouseResponse.json();
+
+    const receiptResponse = await app.inject({
+      method: "POST",
+      url: "/api/document/WarehouseReceipt",
+      headers: {
+        authorization: `Bearer ${managerToken}`
+      },
+      payload: {
+        warehouseId: warehouse.id,
+        lines: [{ itemId: item.id, quantity: 3, price: 50 }]
+      }
+    });
+    const receipt = receiptResponse.json();
+    await app.inject({
+      method: "POST",
+      url: `/api/document/WarehouseReceipt/${receipt.id}/post`,
+      headers: {
+        authorization: `Bearer ${managerToken}`
+      }
+    });
+
+    const metricsResponse = await app.inject({
+      method: "GET",
+      url: "/api/scripting/metrics",
+      headers: {
+        authorization: `Bearer ${adminToken}`
+      }
+    });
+    expect(metricsResponse.statusCode).toBe(200);
+    const metrics = metricsResponse.json();
+    expect(Array.isArray(metrics)).toBe(true);
+    expect(metrics.length).toBeGreaterThan(0);
+    expect(metrics.some((entry: { hookName: string }) => entry.hookName === "warehouseReceipt.beforePost")).toBe(true);
   });
 });

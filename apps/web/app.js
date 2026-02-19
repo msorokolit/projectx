@@ -1,6 +1,7 @@
 (function () {
   const state = {
     token: null,
+    role: null,
     lastReceiptId: null,
     lastInvoiceId: null
   };
@@ -20,6 +21,21 @@
 
   function write(id, value) {
     document.getElementById(id).value = value;
+  }
+
+  function updateRoleVisibility() {
+    const isViewer = state.role === "Viewer";
+    [
+      "createItemBtn",
+      "createWarehouseBtn",
+      "createReceiptBtn",
+      "postReceiptBtn",
+      "createInvoiceBtn",
+      "postInvoiceBtn",
+      "unpostInvoiceBtn"
+    ].forEach((id) => {
+      document.getElementById(id).disabled = isViewer;
+    });
   }
 
   async function request(method, url, payload) {
@@ -45,6 +61,8 @@
         password: read("password")
       });
       state.token = response.accessToken;
+      state.role = response.user.role;
+      updateRoleVisibility();
       authStateNode.textContent = `Authenticated as ${response.user.username} (${response.user.role})`;
       log("Logged in", response.user);
     } catch (error) {

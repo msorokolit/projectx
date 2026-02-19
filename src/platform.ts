@@ -14,7 +14,8 @@ import {
   type PlatformObjectType,
   type PlatformRecord,
   type RegisterMovement,
-  type RegisterMovementRecord
+  type RegisterMovementRecord,
+  type ScriptExecutionMetric
 } from "./types";
 
 export interface AuditEntry {
@@ -55,6 +56,7 @@ export class PlatformRuntime {
   private readonly registerMovements = new Map<string, RegisterMovementRecord[]>();
   private readonly scriptRegistry = new Map<string, string>();
   private readonly auditLog: AuditEntry[] = [];
+  private readonly scriptMetrics: ScriptExecutionMetric[] = [];
   private readonly metadataMigrations: MetadataMigrationRecord[] = [];
   private metadataSqlPreview: string[] = [];
   private readonly scriptEngine = new ScriptEngine();
@@ -326,6 +328,10 @@ export class PlatformRuntime {
     return clone(this.auditLog);
   }
 
+  getScriptMetrics(): ScriptExecutionMetric[] {
+    return clone(this.scriptMetrics);
+  }
+
   private findCatalog(name: string): CatalogDefinition {
     const definition = this.getMetadata().catalogs.find((item) => item.name === name);
     if (!definition) {
@@ -449,14 +455,38 @@ export class PlatformRuntime {
     if (!sourceCode) {
       throw new Error(`Hook script is not registered: ${hookName}`);
     }
-    this.scriptEngine.run({
-      sourceCode,
-      context: {
-        ...payload,
-        context: hookContext
-      },
-      timeoutMs: 100
-    });
+    const startedAt = Date.now();
+    try {
+      this.scriptEngine.run({
+        sourceCode,
+        context: {
+          ...payload,
+          context: hookContext
+        },
+        timeoutMs: 100
+      });
+      this.scriptMetrics.push({
+        id: randomUUID(),
+        timestamp: new Date(startedAt).toISOString(),
+        hookName,
+        objectName: hookContext.objectName,
+        actor: hookContext.actor,
+        durationMs: Date.now() - startedAt,
+        status: "ok"
+      });
+    } catch (error) {
+      this.scriptMetrics.push({
+        id: randomUUID(),
+        timestamp: new Date(startedAt).toISOString(),
+        hookName,
+        objectName: hookContext.objectName,
+        actor: hookContext.actor,
+        durationMs: Date.now() - startedAt,
+        status: "error",
+        errorMessage: error instanceof Error ? error.message : "Unknown script error"
+      });
+      throw error;
+    }
   }
 
   assertPermission(

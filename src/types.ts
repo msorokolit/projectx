@@ -117,3 +117,14 @@ export interface MetadataMigrationRecord {
   metadataVersion: string;
   statements: string[];
 }
+
+export interface ScriptExecutionMetric {
+  id: string;
+  timestamp: string;
+  hookName: string;
+  objectName: string;
+  actor: string;
+  durationMs: number;
+  status: "ok" | "error";
+  errorMessage?: string;
+}

@@ -24,6 +24,7 @@ This project is a metadata-driven ERP platform inspired by 1C architecture, with
   - No direct `process` object in script global scope
 - API endpoints for metadata, objects, posting, balances, and audit log
 - JWT authentication with built-in demo users (`admin`, `manager`, `viewer`)
+- Web client adapts write controls based on authenticated role
 - Metadata SQL compiler preview + migration history
 - Example domain: `TradeManagement` (items, warehouses, receipts, sales invoices)
 
@@ -75,6 +76,7 @@ Open `http://localhost:3000/` for the built-in web client.
 - `GET /api/register/:register/movements`
 - `GET /api/register/:register/balance?dim=value`
 - `GET /api/audit` (Admin only)
+- `GET /api/scripting/metrics` (Admin only)
 
 ## Example flow
 
@@ -117,3 +119,9 @@ GitHub Actions workflow runs:
 - `npm run lint`
 - `npm run test`
 - `npm run build`
+
+## Observability
+
+- Every request gets an `x-request-id` response header.
+- Structured request start/finish logs are emitted to stdout.
+- Script hook execution metrics are available through `/api/scripting/metrics`.
