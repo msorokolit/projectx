@@ -180,6 +180,48 @@ describe("1C clone platform runtime", () => {
     });
     expect(balance.quantity).toBe(6);
   });
+
+  it("provides log/db/registers host APIs for hooks", () => {
+    const runtime = new PlatformRuntime();
+    const metadata = loadMetadataFromFile("examples/trade-management/metadata/trade-management.json");
+    const receipt = metadata.documents.find((document) => document.name === "WarehouseReceipt");
+    if (!receipt) {
+      throw new Error("WarehouseReceipt metadata is missing");
+    }
+    receipt.hooks.beforePost = "warehouseReceipt.beforePost.withHostApis";
+    runtime.setMetadata(metadata, "test");
+    runtime.registerScript(
+      "warehouseReceipt.beforePost.withHostApis",
+      "({ document, db, registers, log, addMovement }) => {" +
+        "const items = db.listCatalogRecords('Items');" +
+        "const preview = registers.getBalance('StockBalance', { itemId: 'x', warehouseId: 'y' });" +
+        "log('hook-start', { itemCount: items.length, preview });" +
+        "for (const line of document.lines) {" +
+          "addMovement({ register: 'StockBalance', kind: 'in', dimensions: { itemId: line.itemId, warehouseId: document.warehouseId }, resources: { quantity: Number(line.quantity), amount: Number(line.quantity) * Number(line.price) } });" +
+        "}" +
+      "}"
+    );
+
+    const item = runtime.upsertCatalogRecord("manager", "Manager", "Items", {
+      name: "Host API item",
+      sku: "HOST-API"
+    });
+    const warehouse = runtime.upsertCatalogRecord("manager", "Manager", "Warehouses", {
+      name: "Host API warehouse"
+    });
+    const receiptDoc = runtime.upsertDocument("manager", "Manager", "WarehouseReceipt", {
+      warehouseId: warehouse.id,
+      lines: [{ itemId: item.id, quantity: 2, price: 30 }]
+    });
+    runtime.postDocument("manager", "Manager", "WarehouseReceipt", receiptDoc.id);
+
+    const audit = runtime.getAuditLog();
+    expect(
+      audit.some(
+        (entry) => entry.action === "script.log" && entry.details?.message === "hook-start"
+      )
+    ).toBe(true);
+  });
 });
 
 describe("script engine sandbox behavior", () => {

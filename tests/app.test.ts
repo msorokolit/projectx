@@ -266,4 +266,84 @@ describe("HTTP API", () => {
     expect(metrics.length).toBeGreaterThan(0);
     expect(metrics.some((entry: { hookName: string }) => entry.hookName === "warehouseReceipt.beforePost")).toBe(true);
   });
+
+  it("manages script registry and validates scripts for admin", async () => {
+    const adminToken = await login("admin", "admin");
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/scripting/registry",
+      headers: {
+        authorization: `Bearer ${adminToken}`
+      }
+    });
+    expect(listResponse.statusCode).toBe(200);
+    expect(Array.isArray(listResponse.json())).toBe(true);
+
+    const validateGoodResponse = await app.inject({
+      method: "POST",
+      url: "/api/scripting/validate",
+      headers: {
+        authorization: `Bearer ${adminToken}`
+      },
+      payload: {
+        sourceCode: "({ setField }) => setField('x', 1)"
+      }
+    });
+    expect(validateGoodResponse.statusCode).toBe(200);
+    expect(validateGoodResponse.json().valid).toBe(true);
+
+    const validateBadResponse = await app.inject({
+      method: "POST",
+      url: "/api/scripting/validate",
+      headers: {
+        authorization: `Bearer ${adminToken}`
+      },
+      payload: {
+        sourceCode: "() => require('node:fs')"
+      }
+    });
+    expect(validateBadResponse.statusCode).toBe(400);
+    expect(validateBadResponse.json().message).toMatch(/forbidden token/);
+
+    const registerResponse = await app.inject({
+      method: "POST",
+      url: "/api/scripting/registry",
+      headers: {
+        authorization: `Bearer ${adminToken}`
+      },
+      payload: {
+        scriptName: "test.custom.script",
+        sourceCode: "({ log }) => { if (log) { log('ok') } }"
+      }
+    });
+    expect(registerResponse.statusCode).toBe(200);
+    expect(registerResponse.json().ok).toBe(true);
+
+    const listAfterResponse = await app.inject({
+      method: "GET",
+      url: "/api/scripting/registry",
+      headers: {
+        authorization: `Bearer ${adminToken}`
+      }
+    });
+    expect(
+      listAfterResponse
+        .json()
+        .some((entry: { name: string }) => entry.name === "test.custom.script")
+    ).toBe(true);
+  });
+
+  it("blocks non-admin from scripting registry", async () => {
+    const managerToken = await login("manager", "manager");
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/scripting/registry",
+      headers: {
+        authorization: `Bearer ${managerToken}`
+      }
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().message).toMatch(/Only Admin/);
+  });
 });

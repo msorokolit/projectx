@@ -36,10 +36,29 @@ function assertSafeSource(sourceCode: string): void {
 }
 
 export class ScriptEngine {
+  validate(sourceCode: string): void {
+    assertSafeSource(sourceCode);
+    const script = new Script(`(${sourceCode})`);
+    const runtimeContext = createContext({
+      Math,
+      Date,
+      JSON
+    }, {
+      codeGeneration: {
+        strings: false,
+        wasm: false
+      }
+    });
+    const compiled = script.runInContext(runtimeContext, { timeout: 20 });
+    if (typeof compiled !== "function") {
+      throw new Error("Hook script must evaluate to a function expression.");
+    }
+  }
+
   run<TContext extends Record<string, unknown>>(
     options: ScriptRunOptions<TContext>
   ): unknown {
-    assertSafeSource(options.sourceCode);
+    this.validate(options.sourceCode);
     const timeoutMs = options.timeoutMs ?? 50;
     const script = new Script(`(${options.sourceCode})(__payload)`);
     const runtimeContext = createContext({

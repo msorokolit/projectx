@@ -5,7 +5,7 @@ Business logic scripts are plain JavaScript function expressions.
 ## Script format
 
 ```js
-({ document, addMovement, getBalance, setField, reject, context }) => {
+({ document, addMovement, getBalance, setField, reject, context, db, registers, log }) => {
   // custom logic
 }
 ```
@@ -18,6 +18,13 @@ Business logic scripts are plain JavaScript function expressions.
 - `getBalance(registerName, filter)`: reads current register balance.
 - `reject(message)`: aborts operation with error.
 - `context`: `{ actor, objectName }`.
+- `db`:
+  - `db.getDocument(documentName, documentId)`
+  - `db.listCatalogRecords(catalogName)`
+- `registers`:
+  - `registers.getBalance(registerName, filter)`
+  - `registers.addMovement(movement)`
+- `log(message, data?)`: writes script log into audit stream.
 
 ## Movement format
 
@@ -42,4 +49,12 @@ addMovement({
 
 - Scripts run through Node VM with timeout.
 - Script globals are restricted (`Math`, `Date`, `JSON`).
-- `process` is not exposed directly.
+- Forbidden tokens are rejected (`require`, `process`, dynamic `eval`/`Function`, and Node internals).
+- Dynamic code generation is disabled in sandbox context.
+
+## Scripting admin APIs
+
+- `GET /api/scripting/metrics` (Admin)
+- `GET /api/scripting/registry` (Admin)
+- `POST /api/scripting/registry` (Admin) — register/update script source
+- `POST /api/scripting/validate` (Admin) — validate script source without running business operation

@@ -108,12 +108,25 @@ export class PlatformRuntime {
   }
 
   registerScript(scriptName: string, sourceCode: string): void {
+    this.scriptEngine.validate(sourceCode);
     this.scriptRegistry.set(scriptName, sourceCode);
   }
 
   registerScriptFromFile(scriptName: string, filePath: string): void {
     const content = readFileSync(resolve(filePath), "utf-8");
     this.registerScript(scriptName, content);
+  }
+
+  listScripts(): Array<{ name: string; sourceCode: string }> {
+    return Array.from(this.scriptRegistry.entries()).map(([name, sourceCode]) => ({
+      name,
+      sourceCode
+    }));
+  }
+
+  validateScriptSource(sourceCode: string): { valid: true } {
+    this.scriptEngine.validate(sourceCode);
+    return { valid: true };
   }
 
   listCatalogRecords(name: string): PlatformRecord[] {
@@ -434,6 +447,12 @@ export class PlatformRuntime {
     record: DocumentRecord,
     pendingMovements: RegisterMovement[]
   ): Record<string, unknown> {
+    const log = (message: string, data?: Record<string, unknown>): void => {
+      this.audit("script", "script.log", "document", "hook", record.id, {
+        message,
+        data
+      });
+    };
     return {
       document: record.data,
       setField: (name: string, value: unknown): void => {
@@ -446,6 +465,24 @@ export class PlatformRuntime {
       getBalance: (registerName: string, filter: Record<string, unknown>): Record<string, number> => {
         return this.getRegisterBalance(registerName, filter);
       },
+      db: {
+        getDocument: (documentName: string, documentId: string): DocumentRecord => {
+          return this.getDocument(documentName, documentId);
+        },
+        listCatalogRecords: (catalogName: string): PlatformRecord[] => {
+          return this.listCatalogRecords(catalogName);
+        }
+      },
+      registers: {
+        getBalance: (registerName: string, filter: Record<string, unknown>): Record<string, number> => {
+          return this.getRegisterBalance(registerName, filter);
+        },
+        addMovement: (movement: RegisterMovement): void => {
+          this.ensureRegisterExists(movement.register);
+          pendingMovements.push(clone(movement));
+        }
+      },
+      log,
       reject: (message: string): never => {
         throw new Error(message);
       }

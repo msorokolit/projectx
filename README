@@ -90,6 +90,9 @@ The web client includes metadata browser, generic object CRUD, document lifecycl
 - `GET /api/register/:register/balance?dim=value`
 - `GET /api/audit` (Admin only)
 - `GET /api/scripting/metrics` (Admin only)
+- `GET /api/scripting/registry` (Admin only)
+- `POST /api/scripting/registry` (Admin only)
+- `POST /api/scripting/validate` (Admin only)
 
 ## Example flow
 
