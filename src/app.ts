@@ -4,6 +4,7 @@ import staticFiles from "@fastify/static";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { loginPayloadSchema, validateCredentials } from "./auth";
+import { readConfig } from "./config";
 import { parseMetadata } from "./metadata";
 import { PlatformRuntime } from "./platform";
 
@@ -32,9 +33,10 @@ async function requireRequestContext(
 }
 
 export function createApp(runtime = new PlatformRuntime()): FastifyInstance {
+  const config = readConfig();
   const app = Fastify({ logger: false });
   app.register(jwt, {
-    secret: process.env.JWT_SECRET ?? "dev-local-secret"
+    secret: config.JWT_SECRET
   });
   app.register(staticFiles, {
     root: resolve("apps/web"),
