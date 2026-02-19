@@ -23,6 +23,8 @@ This project is a metadata-driven ERP platform inspired by 1C architecture, with
   - Script execution with VM timeout guard
   - No direct `process` object in script global scope
 - API endpoints for metadata, objects, posting, balances, and audit log
+- JWT authentication with built-in demo users (`admin`, `manager`, `viewer`)
+- Metadata SQL compiler preview + migration history
 - Example domain: `TradeManagement` (items, warehouses, receipts, sales invoices)
 
 ## Project structure
@@ -56,7 +58,10 @@ Server starts on `http://localhost:3000`.
 ## Important API endpoints
 
 - `GET /health`
+- `POST /api/auth/login`
 - `GET /api/metadata`
+- `GET /api/metadata/sql-preview`
+- `GET /api/metadata/migrations`
 - `POST /api/metadata/load`
 - `GET /api/catalog/:catalog`
 - `POST /api/catalog/:catalog`
@@ -80,9 +85,18 @@ Server starts on `http://localhost:3000`.
    - Compute totals/taxes
 5. Query `StockBalance` register for resulting balances.
 
-## Request context headers
+## Authentication
 
-- `x-user` — actor name used in audit log.
-- `x-role` — role for permission checks (`Admin`, `Manager`, `Viewer`).
+Obtain access token:
 
-If omitted, role defaults to `Admin` for easy local bootstrapping.
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "content-type: application/json" \
+  -d '{"username":"manager","password":"manager"}'
+```
+
+Then pass token in `Authorization` header:
+
+```text
+Authorization: Bearer <accessToken>
+```

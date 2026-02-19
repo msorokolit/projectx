@@ -16,10 +16,24 @@ describe("HTTP API", () => {
     await app.close();
   });
 
+  async function login(username: string, password: string): Promise<string> {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/auth/login",
+      payload: { username, password }
+    });
+    expect(response.statusCode).toBe(200);
+    return response.json().accessToken as string;
+  }
+
   it("returns metadata", async () => {
+    const token = await login("manager", "manager");
     const response = await app.inject({
       method: "GET",
-      url: "/api/metadata"
+      url: "/api/metadata",
+      headers: {
+        authorization: `Bearer ${token}`
+      }
     });
     expect(response.statusCode).toBe(200);
     const payload = response.json();
@@ -27,9 +41,14 @@ describe("HTTP API", () => {
   });
 
   it("returns metadata SQL preview and migration history", async () => {
+    const managerToken = await login("manager", "manager");
+    const adminToken = await login("admin", "admin");
     const previewResponse = await app.inject({
       method: "GET",
-      url: "/api/metadata/sql-preview"
+      url: "/api/metadata/sql-preview",
+      headers: {
+        authorization: `Bearer ${managerToken}`
+      }
     });
     expect(previewResponse.statusCode).toBe(200);
     const previewPayload = previewResponse.json();
@@ -40,8 +59,7 @@ describe("HTTP API", () => {
       method: "GET",
       url: "/api/metadata/migrations",
       headers: {
-        "x-role": "Admin",
-        "x-user": "root"
+        authorization: `Bearer ${adminToken}`
       }
     });
     expect(migrationsResponse.statusCode).toBe(200);
@@ -52,12 +70,12 @@ describe("HTTP API", () => {
   });
 
   it("allows manager to create catalogs and documents", async () => {
+    const token = await login("manager", "manager");
     const itemResponse = await app.inject({
       method: "POST",
       url: "/api/catalog/Items",
       headers: {
-        "x-role": "Manager",
-        "x-user": "alice"
+        authorization: `Bearer ${token}`
       },
       payload: {
         name: "Monitor",
@@ -72,8 +90,7 @@ describe("HTTP API", () => {
       method: "POST",
       url: "/api/catalog/Warehouses",
       headers: {
-        "x-role": "Manager",
-        "x-user": "alice"
+        authorization: `Bearer ${token}`
       },
       payload: {
         name: "WH-API"
@@ -86,8 +103,7 @@ describe("HTTP API", () => {
       method: "POST",
       url: "/api/document/WarehouseReceipt",
       headers: {
-        "x-role": "Manager",
-        "x-user": "alice"
+        authorization: `Bearer ${token}`
       },
       payload: {
         warehouseId: warehouse.id,
@@ -101,8 +117,7 @@ describe("HTTP API", () => {
       method: "POST",
       url: `/api/document/WarehouseReceipt/${receipt.id}/post`,
       headers: {
-        "x-role": "Manager",
-        "x-user": "alice"
+        authorization: `Bearer ${token}`
       }
     });
     expect(postResponse.statusCode).toBe(200);
@@ -111,8 +126,7 @@ describe("HTTP API", () => {
       method: "GET",
       url: `/api/register/StockBalance/balance?itemId=${item.id}&warehouseId=${warehouse.id}`,
       headers: {
-        "x-role": "Manager",
-        "x-user": "alice"
+        authorization: `Bearer ${token}`
       }
     });
     expect(balanceResponse.statusCode).toBe(200);
@@ -120,12 +134,12 @@ describe("HTTP API", () => {
   });
 
   it("blocks viewer from write operations", async () => {
+    const token = await login("viewer", "viewer");
     const response = await app.inject({
       method: "POST",
       url: "/api/catalog/Items",
       headers: {
-        "x-role": "Viewer",
-        "x-user": "bob"
+        authorization: `Bearer ${token}`
       },
       payload: {
         name: "Blocked",
@@ -134,5 +148,13 @@ describe("HTTP API", () => {
     });
     expect(response.statusCode).toBe(400);
     expect(response.json().message).toMatch(/Access denied/);
+  });
+
+  it("rejects requests without JWT token", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/metadata"
+    });
+    expect(response.statusCode).toBe(401);
   });
 });
