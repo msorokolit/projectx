@@ -69,6 +69,19 @@ describe("HTTP API", () => {
     expect(migrationsPayload[0].metadataName).toBe("TradeManagement");
   });
 
+  it("blocks non-admin migration history access", async () => {
+    const managerToken = await login("manager", "manager");
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/metadata/migrations",
+      headers: {
+        authorization: `Bearer ${managerToken}`
+      }
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json().message).toMatch(/Only Admin/);
+  });
+
   it("allows manager to create catalogs and documents", async () => {
     const token = await login("manager", "manager");
     const itemResponse = await app.inject({

@@ -101,3 +101,18 @@ Then pass token in `Authorization` header:
 ```text
 Authorization: Bearer <accessToken>
 ```
+
+## Demo users
+
+- `admin` / `admin`
+- `manager` / `manager`
+- `viewer` / `viewer`
+
+## CI
+
+GitHub Actions workflow runs:
+
+- `npm ci`
+- `npm run lint`
+- `npm run test`
+- `npm run build`
