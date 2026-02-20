@@ -23,8 +23,36 @@
             <input id="password" type="password" value="manager" />
           </label>
         </div>
+        <div class="button-row">
+          <button id="loginAsAdminBtn" type="button">Use admin</button>
+          <button id="loginAsManagerBtn" type="button">Use manager</button>
+          <button id="loginAsViewerBtn" type="button">Use viewer</button>
+        </div>
         <button id="loginBtn">Login</button>
         <div id="authState" class="muted">Not authenticated</div>
+      </section>
+
+      <section class="panel">
+        <h2>Workflow Assistant</h2>
+        <p class="muted">
+          Run the happy-path inventory scenario with guided steps and live progress.
+        </p>
+        <div class="button-row">
+          <button id="loadMetadataBtn" type="button">1) Load metadata</button>
+          <button id="runGuidedFlowBtn" type="button">2) Run guided trade flow</button>
+          <button id="readStockSnapshotBtn" type="button">3) Read stock snapshot</button>
+          <button id="seedDemoBtn" type="button">Admin seed scenario</button>
+        </div>
+        <div class="row">
+          <div>
+            <h3>Progress</h3>
+            <ul id="workflowProgress"></ul>
+          </div>
+          <div>
+            <h3>Current context</h3>
+            <ul id="workflowContext"></ul>
+          </div>
+        </div>
       </section>
 
       <section class="panel">
@@ -200,6 +228,9 @@
 
       <section class="panel">
         <h2>Console</h2>
+        <div class="button-row">
+          <button id="clearConsoleBtn" type="button">Clear console</button>
+        </div>
         <pre id="console"></pre>
       </section>
     </main>

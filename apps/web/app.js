@@ -1,14 +1,52 @@
 (function () {
+  const STORAGE_KEY = "oneCCloneWebState.v2";
   const state = {
     token: null,
     role: null,
     metadata: null,
+    username: null,
     lastReceiptId: null,
-    lastInvoiceId: null
+    lastInvoiceId: null,
+    lastItemId: null,
+    lastWarehouseId: null
   };
 
   const consoleNode = document.getElementById("console");
   const authStateNode = document.getElementById("authState");
+
+  function persistState() {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        token: state.token,
+        role: state.role,
+        username: state.username,
+        lastReceiptId: state.lastReceiptId,
+        lastInvoiceId: state.lastInvoiceId,
+        lastItemId: state.lastItemId,
+        lastWarehouseId: state.lastWarehouseId
+      })
+    );
+  }
+
+  function restoreState() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      state.token = parsed.token ?? null;
+      state.role = parsed.role ?? null;
+      state.username = parsed.username ?? null;
+      state.lastReceiptId = parsed.lastReceiptId ?? null;
+      state.lastInvoiceId = parsed.lastInvoiceId ?? null;
+      state.lastItemId = parsed.lastItemId ?? null;
+      state.lastWarehouseId = parsed.lastWarehouseId ?? null;
+    } catch (_error) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }
 
   function log(message, payload) {
     const line = `[${new Date().toISOString()}] ${message}`;
@@ -56,6 +94,74 @@
       li.textContent = value;
       node.appendChild(li);
     });
+  }
+
+  function setPairList(listId, pairs) {
+    const node = document.getElementById(listId);
+    node.innerHTML = "";
+    pairs.forEach(([label, value]) => {
+      const li = document.createElement("li");
+      li.textContent = `${label}: ${value ?? "-"}`;
+      node.appendChild(li);
+    });
+  }
+
+  function setWorkflowSteps(steps) {
+    setList(
+      "workflowProgress",
+      steps.map((step) => `${step.done ? "✅" : "⬜"} ${step.label}`)
+    );
+  }
+
+  function refreshWorkflowContext() {
+    setPairList("workflowContext", [
+      ["User", state.username ? `${state.username} (${state.role ?? "unknown"})` : "none"],
+      ["Item", state.lastItemId],
+      ["Warehouse", state.lastWarehouseId],
+      ["Last receipt", state.lastReceiptId],
+      ["Last invoice", state.lastInvoiceId]
+    ]);
+  }
+
+  function updateAuthState() {
+    if (!state.token || !state.role) {
+      authStateNode.textContent = "Not authenticated";
+      return;
+    }
+    authStateNode.textContent = `Authenticated as ${state.username ?? "user"} (${state.role})`;
+  }
+
+  function applyCredentials(username) {
+    write("username", username);
+    write("password", username);
+  }
+
+  function buildRegisterFilter(patch) {
+    const current = parseJsonInput("registerFilterJson");
+    write(
+      "registerFilterJson",
+      JSON.stringify(
+        {
+          ...current,
+          ...patch
+        },
+        null,
+        2
+      )
+    );
+  }
+
+  async function loadMetadata() {
+    const metadata = await request("GET", "/api/metadata");
+    state.metadata = metadata;
+    renderMetadata();
+    syncObjectPickers();
+    log("Metadata loaded", {
+      catalogs: metadata.catalogs.length,
+      documents: metadata.documents.length,
+      registers: metadata.registers.length
+    });
+    return metadata;
   }
 
   function renderMetadata() {
@@ -110,7 +216,9 @@
       "unpostInvoiceBtn",
       "createRecordBtn",
       "postDocumentBtn",
-      "unpostDocumentBtn"
+      "unpostDocumentBtn",
+      "runGuidedFlowBtn",
+      "seedDemoBtn"
     ].forEach((id) => {
       document.getElementById(id).disabled = isViewer;
     });
@@ -132,6 +240,111 @@
     return body;
   }
 
+  async function ensureMetadataLoaded() {
+    if (state.metadata) {
+      return;
+    }
+    await loadMetadata();
+  }
+
+  async function runGuidedTradeFlow() {
+    if (!state.token) {
+      throw new Error("Please login first.");
+    }
+    if (state.role === "Viewer") {
+      throw new Error("Viewer role cannot run write workflow.");
+    }
+
+    const startedAt = Date.now();
+    const now = new Date().toISOString().replaceAll(":", "-");
+    const itemName = `Guided item ${now}`;
+    const sku = `GUIDE-${Math.floor(Math.random() * 10000)}`;
+    const warehouseName = `Guided warehouse ${now}`;
+
+    const steps = [
+      { key: "metadata", label: "Metadata loaded", done: false },
+      { key: "item", label: "Item created", done: false },
+      { key: "warehouse", label: "Warehouse created", done: false },
+      { key: "receiptCreated", label: "Warehouse receipt created", done: false },
+      { key: "receiptPosted", label: "Warehouse receipt posted", done: false },
+      { key: "invoiceCreated", label: "Sales invoice created", done: false },
+      { key: "invoicePosted", label: "Sales invoice posted", done: false },
+      { key: "balanceRead", label: "Balance read", done: false }
+    ];
+    setWorkflowSteps(steps);
+
+    await ensureMetadataLoaded();
+    steps.find((item) => item.key === "metadata").done = true;
+    setWorkflowSteps(steps);
+
+    const item = await request("POST", "/api/catalog/Items", {
+      name: itemName,
+      sku,
+      taxRate: 0.2
+    });
+    state.lastItemId = item.id;
+    write("receiptItemId", item.id);
+    write("invoiceItemId", item.id);
+    buildRegisterFilter({ itemId: item.id });
+    steps.find((itemStep) => itemStep.key === "item").done = true;
+    setWorkflowSteps(steps);
+
+    const warehouse = await request("POST", "/api/catalog/Warehouses", {
+      name: warehouseName
+    });
+    state.lastWarehouseId = warehouse.id;
+    write("receiptWarehouseId", warehouse.id);
+    write("invoiceWarehouseId", warehouse.id);
+    buildRegisterFilter({ warehouseId: warehouse.id });
+    steps.find((itemStep) => itemStep.key === "warehouse").done = true;
+    setWorkflowSteps(steps);
+
+    const receipt = await request("POST", "/api/document/WarehouseReceipt", {
+      warehouseId: warehouse.id,
+      lines: [{ itemId: item.id, quantity: 10, price: 100 }]
+    });
+    state.lastReceiptId = receipt.id;
+    steps.find((itemStep) => itemStep.key === "receiptCreated").done = true;
+    setWorkflowSteps(steps);
+
+    await request("POST", `/api/document/WarehouseReceipt/${receipt.id}/post`);
+    steps.find((itemStep) => itemStep.key === "receiptPosted").done = true;
+    setWorkflowSteps(steps);
+
+    const invoice = await request("POST", "/api/document/SalesInvoice", {
+      warehouseId: warehouse.id,
+      lines: [{ itemId: item.id, quantity: 2, price: 150, taxRate: 0.2 }]
+    });
+    state.lastInvoiceId = invoice.id;
+    steps.find((itemStep) => itemStep.key === "invoiceCreated").done = true;
+    setWorkflowSteps(steps);
+
+    await request("POST", `/api/document/SalesInvoice/${invoice.id}/post`);
+    steps.find((itemStep) => itemStep.key === "invoicePosted").done = true;
+    setWorkflowSteps(steps);
+
+    const balance = await request(
+      "GET",
+      `/api/register/Inventory/balance?${toQueryString({
+        itemId: item.id,
+        warehouseId: warehouse.id
+      })}`
+    );
+    steps.find((itemStep) => itemStep.key === "balanceRead").done = true;
+    setWorkflowSteps(steps);
+
+    persistState();
+    refreshWorkflowContext();
+    log("Guided trade flow completed", {
+      durationMs: Date.now() - startedAt,
+      itemId: item.id,
+      warehouseId: warehouse.id,
+      receiptId: receipt.id,
+      invoiceId: invoice.id,
+      balance
+    });
+  }
+
   document.getElementById("loginBtn").addEventListener("click", async () => {
     try {
       const response = await request("POST", "/api/auth/login", {
@@ -140,18 +353,13 @@
       });
       state.token = response.accessToken;
       state.role = response.user.role;
+      state.username = response.user.username;
       updateRoleVisibility();
-      authStateNode.textContent = `Authenticated as ${response.user.username} (${response.user.role})`;
+      updateAuthState();
+      persistState();
+      refreshWorkflowContext();
       log("Logged in", response.user);
-      const metadata = await request("GET", "/api/metadata");
-      state.metadata = metadata;
-      renderMetadata();
-      syncObjectPickers();
-      log("Metadata loaded", {
-        catalogs: metadata.catalogs.length,
-        documents: metadata.documents.length,
-        registers: metadata.registers.length
-      });
+      await loadMetadata();
     } catch (error) {
       log("Login failed", { message: String(error.message || error) });
     }
@@ -159,14 +367,68 @@
 
   document.getElementById("refreshMetadataBtn").addEventListener("click", async () => {
     try {
-      const metadata = await request("GET", "/api/metadata");
-      state.metadata = metadata;
-      renderMetadata();
-      syncObjectPickers();
+      await loadMetadata();
       log("Metadata refreshed");
     } catch (error) {
       log("Metadata refresh failed", { message: String(error.message || error) });
     }
+  });
+
+  document.getElementById("loadMetadataBtn").addEventListener("click", async () => {
+    try {
+      await loadMetadata();
+      setWorkflowSteps([
+        { label: "Metadata loaded", done: true },
+        { label: "Ready for guided flow", done: false }
+      ]);
+    } catch (error) {
+      log("Workflow metadata load failed", { message: String(error.message || error) });
+    }
+  });
+
+  document.getElementById("runGuidedFlowBtn").addEventListener("click", async () => {
+    try {
+      await runGuidedTradeFlow();
+    } catch (error) {
+      log("Guided flow failed", { message: String(error.message || error) });
+    }
+  });
+
+  document.getElementById("readStockSnapshotBtn").addEventListener("click", async () => {
+    try {
+      if (!state.lastItemId || !state.lastWarehouseId) {
+        throw new Error("Run guided flow or create item/warehouse first.");
+      }
+      const balance = await request(
+        "GET",
+        `/api/register/Inventory/balance?${toQueryString({
+          itemId: state.lastItemId,
+          warehouseId: state.lastWarehouseId
+        })}`
+      );
+      log("Stock snapshot", balance);
+    } catch (error) {
+      log("Read stock snapshot failed", { message: String(error.message || error) });
+    }
+  });
+
+  document.getElementById("seedDemoBtn").addEventListener("click", async () => {
+    try {
+      const seeded = await request("POST", "/api/demo/seed/trade-management");
+      log("Demo seeded", seeded);
+    } catch (error) {
+      log("Demo seed failed", { message: String(error.message || error) });
+    }
+  });
+
+  document.getElementById("loginAsAdminBtn").addEventListener("click", () => {
+    applyCredentials("admin");
+  });
+  document.getElementById("loginAsManagerBtn").addEventListener("click", () => {
+    applyCredentials("manager");
+  });
+  document.getElementById("loginAsViewerBtn").addEventListener("click", () => {
+    applyCredentials("viewer");
   });
 
   document.getElementById("browseKind").addEventListener("change", syncObjectPickers);
@@ -259,11 +521,12 @@
         sku: read("itemSku"),
         taxRate: Number(read("itemTaxRate"))
       });
+      state.lastItemId = item.id;
       write("receiptItemId", item.id);
       write("invoiceItemId", item.id);
-      const filter = parseJsonInput("registerFilterJson");
-      filter.itemId = item.id;
-      write("registerFilterJson", JSON.stringify(filter, null, 2));
+      buildRegisterFilter({ itemId: item.id });
+      persistState();
+      refreshWorkflowContext();
       log("Item created", item);
     } catch (error) {
       log("Create item failed", { message: String(error.message || error) });
@@ -275,11 +538,12 @@
       const warehouse = await request("POST", "/api/catalog/Warehouses", {
         name: read("warehouseName")
       });
+      state.lastWarehouseId = warehouse.id;
       write("receiptWarehouseId", warehouse.id);
       write("invoiceWarehouseId", warehouse.id);
-      const filter = parseJsonInput("registerFilterJson");
-      filter.warehouseId = warehouse.id;
-      write("registerFilterJson", JSON.stringify(filter, null, 2));
+      buildRegisterFilter({ warehouseId: warehouse.id });
+      persistState();
+      refreshWorkflowContext();
       log("Warehouse created", warehouse);
     } catch (error) {
       log("Create warehouse failed", { message: String(error.message || error) });
@@ -299,6 +563,8 @@
         ]
       });
       state.lastReceiptId = receipt.id;
+      persistState();
+      refreshWorkflowContext();
       log("WarehouseReceipt created", receipt);
     } catch (error) {
       log("Create receipt failed", { message: String(error.message || error) });
@@ -334,6 +600,8 @@
         ]
       });
       state.lastInvoiceId = invoice.id;
+      persistState();
+      refreshWorkflowContext();
       log("SalesInvoice created", invoice);
     } catch (error) {
       log("Create invoice failed", { message: String(error.message || error) });
@@ -398,6 +666,20 @@
     }
   });
 
+  document.getElementById("clearConsoleBtn").addEventListener("click", () => {
+    consoleNode.textContent = "";
+  });
+
+  restoreState();
+  if (state.username) {
+    write("username", state.username);
+  }
+  if (state.username && !read("password")) {
+    write("password", state.username);
+  }
+  updateAuthState();
+  updateRoleVisibility();
+
   write(
     "payloadJson",
     JSON.stringify(
@@ -421,4 +703,14 @@
       2
     )
   );
+
+  if (state.lastItemId) {
+    write("receiptItemId", state.lastItemId);
+    write("invoiceItemId", state.lastItemId);
+  }
+  if (state.lastWarehouseId) {
+    write("receiptWarehouseId", state.lastWarehouseId);
+    write("invoiceWarehouseId", state.lastWarehouseId);
+  }
+  refreshWorkflowContext();
 })();
