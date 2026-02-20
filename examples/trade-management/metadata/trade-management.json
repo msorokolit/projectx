@@ -1,0 +1,82 @@
+{
+  "name": "TradeManagement",
+  "version": "1.0.0",
+  "catalogs": [
+    {
+      "name": "Items",
+      "title": "Items",
+      "fields": [
+        { "name": "name", "type": "string", "required": true },
+        { "name": "sku", "type": "string", "required": true },
+        { "name": "taxRate", "type": "number", "required": false }
+      ],
+      "hooks": {}
+    },
+    {
+      "name": "Warehouses",
+      "title": "Warehouses",
+      "fields": [
+        { "name": "name", "type": "string", "required": true }
+      ],
+      "hooks": {}
+    }
+  ],
+  "documents": [
+    {
+      "name": "WarehouseReceipt",
+      "title": "Warehouse Receipt",
+      "fields": [
+        { "name": "warehouseId", "type": "string", "required": true },
+        { "name": "lines", "type": "array", "required": true },
+        { "name": "totalAmount", "type": "number", "required": false }
+      ],
+      "hooks": {
+        "beforePost": "warehouseReceipt.beforePost"
+      }
+    },
+    {
+      "name": "SalesInvoice",
+      "title": "Sales Invoice",
+      "fields": [
+        { "name": "warehouseId", "type": "string", "required": true },
+        { "name": "lines", "type": "array", "required": true },
+        { "name": "totalAmount", "type": "number", "required": false },
+        { "name": "taxAmount", "type": "number", "required": false }
+      ],
+      "hooks": {
+        "beforePost": "salesInvoice.beforePost"
+      }
+    }
+  ],
+  "registers": [
+    {
+      "name": "StockBalance",
+      "title": "Stock Balance",
+      "type": "accumulation",
+      "dimensions": ["itemId", "warehouseId"],
+      "resources": ["quantity", "amount"]
+    }
+  ],
+  "roles": [
+    {
+      "name": "Manager",
+      "permissions": [
+        { "objectType": "catalog", "object": "Items", "actions": ["read", "write"] },
+        { "objectType": "catalog", "object": "Warehouses", "actions": ["read", "write"] },
+        { "objectType": "document", "object": "WarehouseReceipt", "actions": ["read", "write", "post"] },
+        { "objectType": "document", "object": "SalesInvoice", "actions": ["read", "write", "post"] },
+        { "objectType": "register", "object": "StockBalance", "actions": ["read"] }
+      ]
+    },
+    {
+      "name": "Viewer",
+      "permissions": [
+        { "objectType": "catalog", "object": "Items", "actions": ["read"] },
+        { "objectType": "catalog", "object": "Warehouses", "actions": ["read"] },
+        { "objectType": "document", "object": "WarehouseReceipt", "actions": ["read"] },
+        { "objectType": "document", "object": "SalesInvoice", "actions": ["read"] },
+        { "objectType": "register", "object": "StockBalance", "actions": ["read"] }
+      ]
+    }
+  ]
+}

@@ -1,1 +1,151 @@
+# 1C Enterprise Clone (JavaScript Business Logic)
 
+This project is a metadata-driven ERP platform inspired by 1C architecture, with **JavaScript hooks** used as the business scripting language.
+
+## Implemented MVP capabilities
+
+- Metadata model:
+  - Catalogs
+  - Documents
+  - Accumulation registers
+  - Roles and permissions (RBAC)
+- Generic runtime:
+  - CRUD for catalogs and documents
+  - Document post/unpost lifecycle
+  - Register movement storage and balance calculation
+- JavaScript business logic hooks:
+  - `beforeWrite`
+  - `onWrite`
+  - `beforePost`
+  - `onPost`
+  - `onUnpost`
+- Hook sandboxing:
+  - Script execution with VM timeout guard
+  - No direct `process` object in script global scope
+- API endpoints for metadata, objects, posting, balances, and audit log
+- JWT authentication with built-in demo users (`admin`, `manager`, `viewer`)
+- Web client adapts write controls based on authenticated role
+- Metadata SQL compiler preview + migration history
+- Example domain: `TradeManagement` (items, warehouses, receipts, sales invoices)
+
+## Project structure
+
+```text
+apps/
+  server/src/
+    main.ts
+    app.ts
+    modules/*
+  web/
+packages/
+  core/src/index.ts
+  db/src/index.ts
+  sdk/src/client.ts
+examples/trade-management/
+  metadata/trade-management.json
+  scripts/
+src/
+  app.ts
+  bootstrap.ts
+  metadata.ts
+  platform.ts
+  scriptingEngine.ts
+  server.ts
+tests/
+  app.test.ts
+  platform.test.ts
+  integration/*.integration.test.ts
+  e2e/*.e2e.test.ts
+```
+
+## Quick start
+
+```bash
+npm install
+npm run test
+npm run dev
+```
+
+Server starts on `http://localhost:3000`.
+Open `http://localhost:3000/` for the built-in web client.
+The web client includes metadata browser, generic object CRUD, document lifecycle, and register query screens.
+
+## Important API endpoints
+
+- `GET /health`
+- `POST /api/auth/login`
+- `GET /api/metadata`
+- `GET /api/metadata/sql-preview`
+- `GET /api/metadata/db-tables`
+- `GET /api/metadata/migrations`
+- `POST /api/metadata/load`
+- `GET /api/catalog/:catalog`
+- `POST /api/catalog/:catalog`
+- `PUT /api/catalog/:catalog/:id`
+- `GET /api/document/:document`
+- `POST /api/document/:document`
+- `POST /api/document/:document/:id/post`
+- `POST /api/document/:document/:id/unpost`
+- `GET /api/register/:register/movements`
+- `GET /api/register/:register/balance?dim=value`
+- `GET /api/audit` (Admin only)
+- `GET /api/scripting/metrics` (Admin only)
+- `GET /api/scripting/registry` (Admin only)
+- `POST /api/scripting/registry` (Admin only)
+- `POST /api/scripting/validate` (Admin only)
+- `POST /api/demo/seed/trade-management` (Admin only)
+
+## Example flow
+
+1. Create catalog entries in `Items` and `Warehouses`.
+2. Create `WarehouseReceipt` and post it.
+3. Create `SalesInvoice` and post it.
+4. `beforePost` scripts:
+   - Write register movements
+   - Validate available stock
+   - Compute totals/taxes
+5. Query `StockBalance` register for resulting balances.
+
+Or run one-click demo seed:
+
+```bash
+curl -X POST http://localhost:3000/api/demo/seed/trade-management \
+  -H "authorization: Bearer <admin-token>"
+```
+
+## Authentication
+
+Obtain access token:
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "content-type: application/json" \
+  -d '{"username":"manager","password":"manager"}'
+```
+
+Then pass token in `Authorization` header:
+
+```text
+Authorization: Bearer <accessToken>
+```
+
+## Demo users
+
+- `admin` / `admin`
+- `manager` / `manager`
+- `viewer` / `viewer`
+
+## CI
+
+GitHub Actions workflow runs:
+
+- `npm ci`
+- `npm run lint`
+- `npm run test`
+- `npm run build`
+
+## Observability
+
+- Every request gets an `x-request-id` response header.
+- Structured request start/finish logs are emitted to stdout.
+- Script hook execution metrics are available through `/api/scripting/metrics`.

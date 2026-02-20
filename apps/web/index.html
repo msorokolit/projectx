@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>1C Clone Web Client</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>1C Enterprise Clone</h1>
+      <p class="subtitle">Metadata-driven operations with JavaScript business hooks</p>
+
+      <section class="panel">
+        <h2>Authentication</h2>
+        <div class="row">
+          <label>
+            Username
+            <input id="username" value="manager" />
+          </label>
+          <label>
+            Password
+            <input id="password" type="password" value="manager" />
+          </label>
+        </div>
+        <div class="button-row">
+          <button id="loginAsAdminBtn" type="button">Use admin</button>
+          <button id="loginAsManagerBtn" type="button">Use manager</button>
+          <button id="loginAsViewerBtn" type="button">Use viewer</button>
+        </div>
+        <button id="loginBtn">Login</button>
+        <div id="authState" class="muted">Not authenticated</div>
+      </section>
+
+      <section class="panel">
+        <h2>Workflow Assistant</h2>
+        <p class="muted">
+          Run the happy-path inventory scenario with guided steps and live progress.
+        </p>
+        <div class="button-row">
+          <button id="loadMetadataBtn" type="button">1) Load metadata</button>
+          <button id="runGuidedFlowBtn" type="button">2) Run guided trade flow</button>
+          <button id="readStockSnapshotBtn" type="button">3) Read stock snapshot</button>
+          <button id="seedDemoBtn" type="button">Admin seed scenario</button>
+        </div>
+        <div class="row">
+          <div>
+            <h3>Progress</h3>
+            <ul id="workflowProgress"></ul>
+          </div>
+          <div>
+            <h3>Current context</h3>
+            <ul id="workflowContext"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Metadata browser</h2>
+        <button id="refreshMetadataBtn">Refresh metadata</button>
+        <div class="row">
+          <div>
+            <h3>Catalogs</h3>
+            <ul id="metadataCatalogs"></ul>
+          </div>
+          <div>
+            <h3>Documents</h3>
+            <ul id="metadataDocuments"></ul>
+          </div>
+          <div>
+            <h3>Registers</h3>
+            <ul id="metadataRegisters"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Object browser</h2>
+        <div class="row">
+          <label>
+            Kind
+            <select id="browseKind">
+              <option value="catalog">Catalog</option>
+              <option value="document">Document</option>
+              <option value="register">Register</option>
+            </select>
+          </label>
+          <label>
+            Object
+            <select id="browseObject"></select>
+          </label>
+        </div>
+        <button id="listObjectsBtn">List records</button>
+      </section>
+
+      <section class="panel">
+        <h2>Record editor (metadata-driven)</h2>
+        <div class="row">
+          <label>
+            Kind
+            <select id="editKind">
+              <option value="catalog">Catalog</option>
+              <option value="document">Document</option>
+            </select>
+          </label>
+          <label>
+            Object
+            <select id="editObject"></select>
+          </label>
+        </div>
+        <label>
+          Payload JSON
+          <textarea id="payloadJson" rows="8">{}</textarea>
+        </label>
+        <button id="createRecordBtn">Create record</button>
+      </section>
+
+      <section class="panel">
+        <h2>Document lifecycle</h2>
+        <div class="row">
+          <label>
+            Document type
+            <select id="lifecycleDocument"></select>
+          </label>
+          <label>
+            Document id
+            <input id="lifecycleDocumentId" />
+          </label>
+        </div>
+        <button id="postDocumentBtn">Post document</button>
+        <button id="unpostDocumentBtn">Unpost document</button>
+      </section>
+
+      <section class="panel">
+        <h2>Register queries</h2>
+        <div class="row">
+          <label>
+            Register
+            <select id="registerObject"></select>
+          </label>
+        </div>
+        <label>
+          Filter JSON
+          <textarea id="registerFilterJson" rows="5">{}</textarea>
+        </label>
+        <button id="readBalanceBtn">Read balance</button>
+        <button id="readMovementsBtn">Read movements</button>
+      </section>
+
+      <section class="panel">
+        <h2>Quick trade demo helpers</h2>
+        <div class="row">
+          <label>
+            Item name
+            <input id="itemName" placeholder="Laptop" />
+          </label>
+          <label>
+            SKU
+            <input id="itemSku" placeholder="LP-100" />
+          </label>
+          <label>
+            Tax rate
+            <input id="itemTaxRate" type="number" step="0.01" value="0.2" />
+          </label>
+        </div>
+        <button id="createItemBtn">Create Item</button>
+        <div class="row">
+          <label>
+            Warehouse name
+            <input id="warehouseName" placeholder="Main warehouse" />
+          </label>
+        </div>
+        <button id="createWarehouseBtn">Create Warehouse</button>
+      </section>
+
+      <section class="panel">
+        <h2>Warehouse Receipt</h2>
+        <div class="row">
+          <label>
+            Item ID
+            <input id="receiptItemId" />
+          </label>
+          <label>
+            Warehouse ID
+            <input id="receiptWarehouseId" />
+          </label>
+          <label>
+            Quantity
+            <input id="receiptQty" type="number" value="10" />
+          </label>
+          <label>
+            Price
+            <input id="receiptPrice" type="number" value="100" />
+          </label>
+        </div>
+        <button id="createReceiptBtn">Create Receipt</button>
+        <button id="postReceiptBtn">Post Last Receipt</button>
+      </section>
+
+      <section class="panel">
+        <h2>Sales Invoice</h2>
+        <div class="row">
+          <label>
+            Item ID
+            <input id="invoiceItemId" />
+          </label>
+          <label>
+            Warehouse ID
+            <input id="invoiceWarehouseId" />
+          </label>
+          <label>
+            Quantity
+            <input id="invoiceQty" type="number" value="1" />
+          </label>
+          <label>
+            Price
+            <input id="invoicePrice" type="number" value="150" />
+          </label>
+          <label>
+            Tax rate
+            <input id="invoiceTaxRate" type="number" value="0.2" step="0.01" />
+          </label>
+        </div>
+        <button id="createInvoiceBtn">Create Invoice</button>
+        <button id="postInvoiceBtn">Post Last Invoice</button>
+        <button id="unpostInvoiceBtn">Unpost Last Invoice</button>
+      </section>
+
+      <section class="panel">
+        <h2>Console</h2>
+        <div class="button-row">
+          <button id="clearConsoleBtn" type="button">Clear console</button>
+        </div>
+        <pre id="console"></pre>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
